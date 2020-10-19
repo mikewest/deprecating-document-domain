@@ -26,6 +26,8 @@ _Note that the Feature Policy opt-out currently causes the setter to throw; a no
 
 `window.postMessage()` provides an explicit communication channel for cross-origin collaboration.
 
+This isn't a perfect match for some use cases which require user activation to flow from one frame to another (consider a [video player in a cross-origin `<iframe>`](https://twitter.com/JibberJim/status/1318134009252237312)), but is the right general purpose mechainsm to point developers towards. Delegation of capability that user activation enables might be possible in the future via a mechanism like the one described in [mustaqahmed/capability-delegation](https://github.com/mustaqahmed/capability-delegation).
+
 ### Do we know anything useful about the ~0.4% usage noted above?
 
 Trawling through HTTP Archive, we see 3,986 (of 5,438,156: 0.07%) pages in the 2020-09-01 desktop corpus, and 2,650 (of 6,845,384: 0.04%) in the mobile corpus. I've compiled these [into a spreadsheet](https://docs.google.com/spreadsheets/d/1jERqy1Up1bdHH5SZhy7e0qxaZY7IFBkEpgvqYyGtiMw/edit?usp=sharing) for easier parsing.
