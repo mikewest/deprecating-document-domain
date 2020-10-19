@@ -1,4 +1,4 @@
-# Deprecating document.domain
+# Deprecating `document.domain`
 
 ## A Problem
 
