@@ -38,6 +38,8 @@ Skimming through the data, a few examples seem worth poking at:
 
 * `bbc.com` loads a media player from `emp.bbc.com`. It doesn't look essential; the page continues to work after setting `document.domain` to something else in the console.
 
+    * Based on some [Twitter conversation](https://twitter.com/mikewest/status/1318100840247427078) it might be possible to remove this dependency.
+
 * `www.naver.com` depends on it more directly, from a `siape.veta.naver.com` frame. It appears that it's doing viewport checks which `IntersectionOberver` might better address?
 
 * `www.sina.com.cn` has a lazy-load script that seems to do viewport checks; `IntersectionObserver` or `loading=lazy` might be better fits.
