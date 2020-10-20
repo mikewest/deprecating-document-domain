@@ -50,3 +50,7 @@ Skimming through the data, a few examples seem worth poking at:
 ### Won't relying on Feature Policy make it difficult for frames to opt-in?
 
 Yes. The top-level document will need to opt-in, and do so in a way that enables the feature for same-site nested documents. Something like `Feature-Policy: document-domain 'src'` would likely be effective.
+
+### Does disabling `document.domain` suffice to enable origin-level process isolation?
+
+No. As noted above, `document.domain` is one (large!) blocker among several. This is one step along the road to enabling isolation by default. The [`origin-isolation` explainer](https://github.com/WICG/origin-isolation#how-it-works) points to additional steps that will be essential to splitting sites into distinct agent clusters. Disabling `document.domain` is necessary, but not sufficient.
