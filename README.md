@@ -12,15 +12,17 @@ Despite [admonitions against its usage in the HTML spec](https://html.spec.whatw
 
 Accepting the post-Spectre threat model means that we must begin work in earnest to unblock origin-level process isolation by removing the `document.domain` setter from the platform, sooner rather than later. Given its broad usage, an iterative approach to removal seems reasonable.
 
-We can begin with simple subsetting: the setter should be disabled in the presence of `Cross-Origin-Opener-Policy` headers, as it already is for `Origin-Isolation` and `crossOriginIsolated` documents.
+We can begin with simple subsetting: the setter's effect on a origin's [domain](https://html.spec.whatwg.org/#concept-origin-domain) should be a no-op in the presence of `Cross-Origin-Opener-Policy` headers, as it already is for `Origin-Isolation` and `crossOriginIsolated` documents.
 
-Beyond that, note that web developers are able to opt-out of `document.domain` usage via the [`document-domain` Feature Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Feature-Policy/document-domain). This provides a clean ratcheting mechanism we could use to reduce usage over time, by changing the policy's default allowlist from `*` to `'none'` (after some period of appropriate developer-facing messaging in places like browsers' developer console and Lighthouse). This allowlist change would disable `document.domain` by default, but allow developers to opt back into it by setting an explicit `Feature-Policy: document-domain 'src'` header, which allows us to track usage via HTTP Archive and browser telemetry, and to make appropriate decisions about a document's process when committing it.
+Following that, we can create a ratcheting deprecation mechanism by introducing a `document-domain` Document Policy configuration point, with a default value of `false` (after an appropriate period of developer-facing messaging in places like browsers developer console, Lighthouse, etc). This policy would similarly disable `document.domain` by default, while still providing developers the ability to opt-into insecurity by sending an explicit `Document-Policy: document-domain` header along with their response. This explicit opt-in will allow us to track usage via HTTP Archive and browser telemetry, and to make appropriate decisions about a document's process when committing a navigation.
 
 As we reduce usage over time, we can strengthen this initial shift by requiring additional opt-in. Enterprise policies and reverse origin trials come to mind as subsequent milestones.
 
-_Note that the Feature Policy opt-out currently causes the setter to throw; a no-op might be more compatible._
-
 ## FAQ
+
+### Who needs to opt-into the `document-domain` Document Policy?
+
+Any page that wishes to set `document.domain` will need to opt-into the ability to do so by sending `Document-Policy: document-domain`. This includes both top-level documents that wish to synchronously script each other, as well as frames that wish to opt-into the same relaxed security posture.
 
 ### What should developers use instead?
 
@@ -46,11 +48,10 @@ Skimming through the data, a few examples seem worth poking at:
 
 * `www.sina.com.cn` has a lazy-load script that seems to do viewport checks; `IntersectionObserver` or `loading=lazy` might be better fits.
 
-
-### Won't relying on Feature Policy make it difficult for frames to opt-in?
-
-Yes. The top-level document will need to opt-in, and do so in a way that enables the feature for same-site nested documents. Something like `Feature-Policy: document-domain 'src'` would likely be effective.
-
 ### Does disabling `document.domain` suffice to enable origin-level process isolation?
 
 No. As noted above, `document.domain` is one (large!) blocker among several. This is one step along the road to enabling isolation by default. The [`origin-isolation` explainer](https://github.com/WICG/origin-isolation#how-it-works) points to additional steps that will be essential to splitting sites into distinct agent clusters. Disabling `document.domain` is necessary, but not sufficient.
+
+### What about the `document-domain` Feature Policy?
+
+Web developers are able to opt-out of `document.domain` usage today via the [`document-domain` Feature Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Feature-Policy/document-domain). Some recent changes to Permission/Feature Policy's inheritance rules make this difficult to use as a deprecation mechanism, however. Had Document Policy existed when we introduced the feature, it would have been a better option. As-is, we should likely remove that policy from Feature Policy and Permissions Policy in favor of the document-based mechanism we now have available.
