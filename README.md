@@ -32,13 +32,42 @@ This isn't a perfect match for some use cases which require user activation to f
 
 ### Do we know anything useful about the ~0.4% usage noted above?
 
-Trawling through HTTP Archive, we see 3,986 (of 5,438,156: 0.07%) pages in the 2020-09-01 desktop corpus, and 2,650 (of 6,845,384: 0.04%) in the mobile corpus. I've compiled these [into a spreadsheet](https://docs.google.com/spreadsheets/d/1jERqy1Up1bdHH5SZhy7e0qxaZY7IFBkEpgvqYyGtiMw/edit?usp=sharing) for easier parsing.
+In the 2020-12-01 HTTP Archive corpus, we see 7038 unique pages (of 7,849,064: 0.09%) whose behavior was influenced by `document.domain`. 
+
+<details>
+   <summary>HTTP Archive Data</summary>
+
+Raw data produced by the following query is available in CSV format at https://github.com/mikewest/deprecating-document-domain/blob/main/2020-12-document-domain-usage.csv. 
+
+```sql
+SELECT
+  url, NET.REG_DOMAIN(url) as host
+FROM
+  (
+    SELECT * FROM httparchive.pages.2020_12_01_desktop
+    UNION ALL
+    SELECT * FROM httparchive.pages.2020_12_01_mobile
+  )
+WHERE
+  # DocumentDomainEnabledCrossOriginAccess
+  JSON_EXTRACT(payload, '$._blinkFeatureFirstUsed.Features.2544') IS NOT NULL
+  # DocumentDomainBlockedCrossOriginAccess
+  OR JSON_EXTRACT(payload, '$._blinkFeatureFirstUsed.Features.2543') IS NOT NULL
+GROUP BY
+  url
+ORDER BY
+  host ASC
+```
+
+</details>
 
 Skimming through the data, a few examples seem worth poking at:
 
-* Alibaba runs storefronts at ~950 `*.alibaba.com` domains (i.e. `https://baominhjsc.trustpass.alibaba.com/`) that rely on `document.domain` to communicate with a messenger widget from `onetalk.alibaba.com`. `58.com` and `fang.com` seem to have similar arrangements.
+* Alibaba runs storefronts at `*.alibaba.com` domains (i.e. `https://baominhjsc.trustpass.alibaba.com/`) that rely on `document.domain` to communicate with a messenger widget from `onetalk.alibaba.com`. 836 such pages show up in this run of the corpus. `iven.co.kr` (e.g. `http://pad.inven.co.kr/`) has a similar setup with ~123 subdomains, as do `58.com` (e.g. `https://bd.58.com/`) with 90 subdomains, `sutochno.ru` (e.g. `https://nv.sutochno.ru/`) with 92 subdomains, and a few others (`fang.com` => 77, `diary.ru` => 77, `idnes.cz` => 71, and so on).
 
-* `qq.com` has ~120 subdomains that rely on `document.domain` to communicate login status with frames like `apps.game.qq.com`.
+* `qq.com` has ~110 subdomains that rely on `document.domain` to communicate login status with frames like `apps.game.qq.com`.
+
+* `58.com` has 90 subdomains using a messaging widget
 
 * `bbc.com` loads a media player from `emp.bbc.com`. It doesn't look essential; the page continues to work after setting `document.domain` to something else in the console.
 
