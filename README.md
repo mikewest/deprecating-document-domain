@@ -1,28 +1,111 @@
-# Deprecating `document.domain`
+# Origin Isolation and Deprecating `document.domain`
+
+## Background
+
+The primary security boundary of the World Wide Web is the
+[origin](https://html.spec.whatwg.org/multipage/origin.html#origin). The
+[same-origin policy](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy)
+guarantees that one web page cannot access (modify, or extract data
+from) another page, unless those pages are hosted on the same origin.
+Several pages within an origin can fully cooperate as a single website,
+but pages from different origins are isolated and cannot
+interfere with each other.
+
+The same origin policy is not just a proven and effective security boundary,
+it is also intuitively understood by even novice users: What one does on a
+site, stays on that site.
+
+Unfortunately, the details are substantially more complex. One particular
+complexity revolves around the
+[Spectre](https://en.wikipedia.org/wiki/Spectre_%28security_vulnerability%29)
+family of attacks and the `document.domain` accessor:
+
+Modern browsers [isolate different pages from each other](https://www.chromium.org/Home/chromium-security/site-isolation), by seperating execution into
+different operating system processes. Pages that need to cooperate need to
+be assigned to the same process. Pages that do not cooperate can be assigned
+to different processes.
+
+The Spectre attacks undermine this model, since they allow near-arbitrary
+memory reads *within the same process*. In other words, we have a high-level
+security boundary based on origins - the same-origin policy - and a low-level
+security boundary based on the operating system processes. Spectre exposes a
+misalignement between them: The API enforces the same-origin policy, but if
+Spectre can be used to read data from anywhere in the same process, then this
+will evade the same-origin policy if
+[different origins are assigned to the
+same process](https://chromium.googlesource.com/chromium/src/+/master/docs/security/side-channel-threat-model.md#multiple-origins-within-a-siteinstance).
+In practical terms, a script on an arbitrary domain could use
+Spectre to read confidential data - like login passwords - from another origin
+that happens to be assigned to the same process.
 
 ## A Problem
 
-Given that computers are broken, it's reasonable to assume a threat model which posits that it is [impossible to create a security boundary inside a single address space](https://chromium.googlesource.com/chromium/src/+/master/docs/security/side-channel-threat-model.md). It's incumbent upon us, then, to align browsers' process model to the web's security boundaries. [Site Isolation](https://www.chromium.org/Home/chromium-security/site-isolation) is a big step in that direction, allowing origins to be partitioned by eTLD+1, cleanly separating `attacker.example` from `secrets.example`. Site-level isolation is, however, insufficient as [same-site-but-cross-origin attacks](https://chromium.googlesource.com/chromium/src/+/master/docs/security/side-channel-threat-model.md#multiple-origins-within-a-siteinstance) remain a real threat. Ideally, we'd map the process boundary to an origin, not a site.
+The solution here is to align the developer- and user-visible high-level
+security boundaries with the low-level, system security boundaries.
+That is, process isolation should be aligned with origins.
 
-There are several challenges to shipping origin-level isolation, but the clearest blocker is the impact that such isolation would have on the ability to relax the same-origin policy through `document.domain`. Using this mechanism, same-site-but-cross-origin documents can decide they should be able to synchronously script each other at runtime, which makes it impossible to commit them into distinct processes _a priori_. In addition to preventing broad adoption of origin-level process isolation, this feature is bad in itself, as it significantly complicates both the implementation of the web's security boundary, and the expectations we can reasonably set for web developers.
+This would appear to be easily done, since process isolation is invisible
+to the APIs, and therefore browsers are free to change their allocation
+strategies at will. Except for one particular "trick":
 
-Despite [admonitions against its usage in the HTML spec](https://html.spec.whatwg.org/multipage/origin.html#relaxing-the-same-origin-restriction), the setter is unfortunately quite pervasive, affecting at least [~0.4% of page views in Chrome](https://chromestatus.com/metrics/feature/timeline/popularity/2544) (down from ~6% thanks to [Facebook's heroic efforts](https://twitter.com/mikewest/status/1136861248186998784)).
+Setting the `document.domain` accessor, which allows a page to modify its
+own origin (within a site, e.g. www.example.org to example.org). This allows
+pages or frames hosted on different origins to move themselves into the
+same origin. A example use case that we have observed are pages that host video
+content in an iframe, where the iframe is served from a different origin than
+the main page. By setting document.domain, these might move themselves into
+the same origin, and then the media player and main page can exchange data.
+
+[Setting document.domain has been deprecated]((https://html.spec.whatwg.org/multipage/origin.html#relaxing-the-same-origin-restriction)
+for along time, but continues being supported by browsers.
+This forces process allocation to be by site,
+not by origin, because a page *might* use `document.domain` to change their
+origin - within the site - later on. Measurements indicate that [setting
+`document.domain` happens on around 0.4% of page views](https://chromestatus.com/metrics/feature/timeline/popularity/2544)  So 99% of pages do not even use this feature. But because they *might* want
+to set `document.domain` later on, browsers have to allocate processes by site.
+
+In other words: > 99% of page views pay for a feature - in terms of reduced
+security - that they don't make any use of.
 
 ## A Proposal
 
-Accepting the post-Spectre threat model means that we must begin work in earnest to unblock origin-level process isolation by removing the `document.domain` setter from the platform, sooner rather than later. Given its broad usage, an iterative approach to removal seems reasonable.
+The [`Òrigin-Agent-Cluster:` http header](`Origin-Agent-Cluster:` header](https://web.dev/origin-agent-cluster/)
+([spec](https://html.spec.whatwg.org/multipage/origin.html#origin-keyed-agent-clusters))
+allows a page to request being isolated by origin (instead of site). If set
+`true`(`Origin-Agent-Cluster: ?1`), the browser is asked to isolate pages by
+origin. (Agent Cluster is spec speak for isolation groups. Since the low-level
+isolation is not visible at the API layer, specifications only cursorily
+touches the subject.) As a side effect, writing to the  document.domain`
+accessor is blocked.
 
-We can begin with simple subsetting: the setter's effect on a origin's [domain](https://html.spec.whatwg.org/#concept-origin-domain) should be a no-op in the presence of `Cross-Origin-Opener-Policy` headers, as it already is for `Origin-Isolation` and `crossOriginIsolated` documents.
+Currently, bsence of the `Origin-Agent-Cluster:` header`defaults to `false`,
+meaning that an absent header forces isoaltion by site, rather than by origin,
+and setting `document.domain` continues to work. The proposal here is to change
+this default.
 
-Following that, we can create a ratcheting deprecation mechanism by introducing a `document-domain` Document Policy configuration point, with a default value of `false` (after an appropriate period of developer-facing messaging in places like browsers developer console, Lighthouse, etc). This policy would similarly disable `document.domain` by default, while still providing developers the ability to opt-into insecurity by sending an explicit `Document-Policy: document-domain` header along with their response. This explicit opt-in will allow us to track usage via HTTP Archive and browser telemetry, and to make appropriate decisions about a document's process when committing a navigation.
+In detail:
 
-As we reduce usage over time, we can strengthen this initial shift by requiring additional opt-in. Enterprise policies and reverse origin trials come to mind as subsequent milestones.
+* The `Origin-Agent-Cluster:` header will, when present, continue to work as
+  it currently does. What will change is the default when the header is absent.
+* We'll Implement a console warning when a page would be affected by this
+  change: If the page assigns to `document.domain` but does not have
+  any `Origin-Agent-Cluster:` header set a warning is issues.
+* We'll have a developer-enable-able feature flag that treats absence of
+  `Agent-Origin-Cluster:` header as having value true (`?1`)
+* Then we wait.
+* After developers have had some time to adjust, flip the flag, but leave it
+  disable-able.
+* More waiting. Then remove the flag. Now the transition is
+  complete, and the only way to assign to document.domain is to set
+  `Origin-Agent-Cluster: ?0` in the header.
+* (Chrome-specific:) We expect to have an admin-setting for this flag, which
+  would likely remain long-term.
 
 ## FAQ
 
 ### Who needs to opt-into the `document-domain` Document Policy?
 
-Any page that wishes to set `document.domain` will need to opt-into the ability to do so by sending `Document-Policy: document-domain`. This includes both top-level documents that wish to synchronously script each other, as well as frames that wish to opt-into the same relaxed security posture.
+Any page that wishes to set `document.domain` will need to opt-into the ability to do so by sending `Origin-Agent-Cluster: ?0`. This includes both top-level documents that wish to synchronously script each other, as well as frames that wish to opt into the same relaxed security posture.
 
 ### What should developers use instead?
 
