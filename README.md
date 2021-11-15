@@ -32,9 +32,9 @@ The Spectre attacks undermine this model, since they allow near-arbitrary
 memory reads *within the same process*. We have a high-level
 security boundary based on origins - the same-origin policy - and a low-level
 security boundary based on the operating system processes. Spectre exposes a
-misalignment between them: The API enforces the same-origin policy, but if
-Spectre can be used to read data from anywhere in the same process, then this
-will evade the same-origin policy if
+misalignment between them: The browser wants to enforce the same-origin policy,
+but if Spectre can be used to read data from anywhere in the same process,
+then this will evade the same-origin policy if
 [different origins are assigned to the
 same process](https://chromium.googlesource.com/chromium/src/+/master/docs/security/side-channel-threat-model.md#multiple-origins-within-a-siteinstance).
 In practical terms, a script on an arbitrary domain could use
