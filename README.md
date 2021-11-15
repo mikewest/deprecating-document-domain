@@ -1,5 +1,7 @@
 # Origin Isolation and Deprecating `document.domain`
 
+**Authors**: [Daniel Vogelheim](https://github.com/otherdaniel/), [Mike West](https://github.com/mikewest/)
+
 ## Background
 
 The primary security boundary of the World Wide Web is the
