@@ -95,8 +95,8 @@ In detail:
 * After developers have had some time to adjust, flip the flag, but leave it
   disable-able.
 * More waiting. Then remove the flag. Now the transition is
-  complete, and the only way to assign to document.domain is to set
-  `Origin-Agent-Cluster: ?0` in the header.
+  complete, and the only way to relax the same-origin policy through
+  document.domain is to send an `Origin-Agent-Cluster: ?0` header.
 * (Chrome-specific:) We expect to have an admin-setting for this flag, which
   would likely remain long-term.
 
