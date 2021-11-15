@@ -12,24 +12,25 @@ but pages from different origins are isolated and cannot
 interfere with each other.
 
 The same origin policy is not just a proven and effective security boundary,
-it is also intuitively understood by even novice users: What one does on a
-site, stays on that site.
+it is also intuitively understood by even novice users.
 
 Unfortunately, the details are substantially more complex. One particular
 complexity revolves around the
 [Spectre](https://en.wikipedia.org/wiki/Spectre_%28security_vulnerability%29)
 family of attacks and the `document.domain` accessor:
 
-Modern browsers [isolate different pages from each other](https://www.chromium.org/Home/chromium-security/site-isolation), by seperating execution into
+Modern browsers [isolate different sites from each other](https://www.chromium.org/Home/chromium-security/site-isolation), by seperating execution into
 different operating system processes. Pages that need to cooperate need to
 be assigned to the same process. Pages that do not cooperate can be assigned
 to different processes.
 
+## A Problem and a Solution
+
 The Spectre attacks undermine this model, since they allow near-arbitrary
-memory reads *within the same process*. In other words, we have a high-level
+memory reads *within the same process*. We have a high-level
 security boundary based on origins - the same-origin policy - and a low-level
 security boundary based on the operating system processes. Spectre exposes a
-misalignement between them: The API enforces the same-origin policy, but if
+misalignment between them: The API enforces the same-origin policy, but if
 Spectre can be used to read data from anywhere in the same process, then this
 will evade the same-origin policy if
 [different origins are assigned to the
@@ -38,30 +39,31 @@ In practical terms, a script on an arbitrary domain could use
 Spectre to read confidential data - like login passwords - from another origin
 that happens to be assigned to the same process.
 
-## A Problem
-
-The solution here is to align the developer- and user-visible high-level
-security boundaries with the low-level, system security boundaries.
-That is, process isolation should be aligned with origins.
+In other words, the problem is that the user-visible high-level security
+boundaries and the low-level, system security boundaries are misaligned. The
+solution is to align them, so that process isolation follows the origin
+boundary.
 
 This would appear to be easily done, since process isolation is invisible
-to the APIs, and therefore browsers are free to change their allocation
+to the APIs and therefore browsers are free to change their allocation
 strategies at will. Except for one particular "trick":
 
-Setting the `document.domain` accessor, which allows a page to modify its
-own origin (within a site, e.g. www.example.org to example.org). This allows
-pages or frames hosted on different origins to move themselves into the
-same origin. A example use case that we have observed are pages that host video
+Setting the `document.domain` accessor allows pages (within a site,
+e.g. user1.example.com and user2.example.com) access to each other.
+To implement this access, the data from those origins needs to be in the same
+process. A example use case that we have observed are pages that host video
 content in an iframe, where the iframe is served from a different origin than
 the main page. By setting document.domain, these might move themselves into
 the same origin, and then the media player and main page can exchange data.
+To accomodate this usage, browsers will allocate those two pages to the same
+process.
 
 [Setting document.domain has been deprecated]((https://html.spec.whatwg.org/multipage/origin.html#relaxing-the-same-origin-restriction)
-for along time, but continues being supported by browsers.
+for a long time, but continues to be supported by browsers.
 This forces process allocation to be by site,
-not by origin, because a page *might* use `document.domain` to change their
-origin - within the site - later on. Measurements indicate that [setting
-`document.domain` happens on around 0.4% of page views](https://chromestatus.com/metrics/feature/timeline/popularity/2544)  So 99% of pages do not even use this feature. But because they *might* want
+not by origin, because a page *might* use `document.domain` to change its
+origin - within the site - later on. Measurements indicate that [enabling
+cross-origin access by setting `document.domain` happens on around 0.5% of page views](https://chromestatus.com/metrics/feature/timeline/popularity/2544)  So 99% of pages do not even use this feature. But because they *might* want
 to set `document.domain` later on, browsers have to allocate processes by site.
 
 In other words: > 99% of page views pay for a feature - in terms of reduced
@@ -69,17 +71,17 @@ security - that they don't make any use of.
 
 ## A Proposal
 
-The [`Òrigin-Agent-Cluster:` http header](`Origin-Agent-Cluster:` header](https://web.dev/origin-agent-cluster/)
+The [`Òrigin-Agent-Cluster` http header](https://web.dev/origin-agent-cluster/)
 ([spec](https://html.spec.whatwg.org/multipage/origin.html#origin-keyed-agent-clusters))
 allows a page to request being isolated by origin (instead of site). If set
-`true`(`Origin-Agent-Cluster: ?1`), the browser is asked to isolate pages by
+`true` (`Origin-Agent-Cluster: ?1`), the browser is asked to isolate pages by
 origin. (Agent Cluster is spec speak for isolation groups. Since the low-level
 isolation is not visible at the API layer, specifications only cursorily
 touches the subject.) As a side effect, writing to the  document.domain`
-accessor is blocked.
+accessor is ignored.
 
-Currently, bsence of the `Origin-Agent-Cluster:` header`defaults to `false`,
-meaning that an absent header forces isoaltion by site, rather than by origin,
+Currently, absence of the `Origin-Agent-Cluster` header defaults to `false`,
+meaning that an absent header forces clustering by site, rather than by origin,
 and setting `document.domain` continues to work. The proposal here is to change
 this default.
 
@@ -93,8 +95,8 @@ In detail:
 * We'll have a developer-enable-able feature flag that treats absence of
   `Agent-Origin-Cluster:` header as having value true (`?1`)
 * Then we wait.
-* After developers have had some time to adjust, flip the flag, but leave it
-  disable-able.
+* After developers have had some time to adjust, change the flag's default
+  value.
 * More waiting. Then remove the flag. Now the transition is
   complete, and the only way to assign to document.domain is to set
   `Origin-Agent-Cluster: ?0` in the header.
@@ -103,7 +105,7 @@ In detail:
 
 ## FAQ
 
-### Who needs to opt-into the `document-domain` Document Policy?
+### Who needs to set `Origin-Agent-Cluster` header?
 
 Any page that wishes to set `document.domain` will need to opt-into the ability to do so by sending `Origin-Agent-Cluster: ?0`. This includes both top-level documents that wish to synchronously script each other, as well as frames that wish to opt into the same relaxed security posture.
 
@@ -115,12 +117,12 @@ This isn't a perfect match for some use cases which require user activation to f
 
 ### Do we know anything useful about the ~0.4% usage noted above?
 
-In the 2020-12-01 HTTP Archive corpus, we see 7038 unique pages (of 7,849,064: 0.09%) whose behavior was influenced by `document.domain`. 
+In the 2020-12-01 HTTP Archive corpus, we see 7038 unique pages (of 7,849,064: 0.09%) whose behavior was influenced by `document.domain`.
 
 <details>
    <summary>HTTP Archive Data</summary>
 
-Raw data produced by the following query is available in CSV format at https://github.com/mikewest/deprecating-document-domain/blob/main/2020-12-document-domain-usage.csv. 
+Raw data produced by the following query is available in CSV format at https://github.com/mikewest/deprecating-document-domain/blob/main/2020-12-document-domain-usage.csv.
 
 ```sql
 SELECT
