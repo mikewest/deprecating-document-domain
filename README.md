@@ -1,5 +1,7 @@
 # Origin Isolation and Deprecating `document.domain`
 
+**Authors**: [Daniel Vogelheim](https://github.com/otherdaniel/), [Mike West](https://github.com/mikewest/)
+
 ## Background
 
 The primary security boundary of the World Wide Web is the
@@ -89,17 +91,16 @@ In detail:
 
 * The `Origin-Agent-Cluster:` header will, when present, continue to work as
   it currently does. What will change is the default when the header is absent.
-* We'll Implement a console warning when a page would be affected by this
-  change: If the page assigns to `document.domain` but does not have
-  any `Origin-Agent-Cluster:` header set a warning is issues.
-* We'll have a developer-enable-able feature flag that treats absence of
-  `Agent-Origin-Cluster:` header as having value true (`?1`)
+* We'll implement a console warning when a page assigns to `document.domain`
+  but does not set an `Origin-Agent-Cluster: ?0` header.
+* We'll build a feature flag that allows developers to opt-into the new default behavior
+  locally in order to track down issues on their own sites.
 * Then we wait.
 * After developers have had some time to adjust, change the flag's default
   value.
 * More waiting. Then remove the flag. Now the transition is
-  complete, and the only way to assign to document.domain is to set
-  `Origin-Agent-Cluster: ?0` in the header.
+  complete, and the only way to relax the same-origin policy through
+  document.domain is to send an `Origin-Agent-Cluster: ?0` header.
 * (Chrome-specific:) We expect to have an admin-setting for this flag, which
   would likely remain long-term.
 
