@@ -55,16 +55,16 @@ e.g. user1.example.com and user2.example.com) access to each other.
 To implement this access, the data from those origins needs to be in the same
 process. A example use case that we have observed are pages that host video
 content in an iframe, where the iframe is served from a different origin than
-the main page. By setting document.domain, these might move themselves into
-the same origin, and then the media player and main page can exchange data.
-To accomodate this usage, browsers will allocate those two pages to the same
-process.
+the main page. By setting document.domain to their common domain suffix,
+these can give each other access and e.g. the page can directly control the
+player. To accomodate this usage, browsers will allocate those two pages
+to the same process.
 
 [Setting document.domain has been deprecated]((https://html.spec.whatwg.org/multipage/origin.html#relaxing-the-same-origin-restriction)
 for a long time, but continues to be supported by browsers.
 This forces process allocation to be by site,
-not by origin, because a page *might* use `document.domain` to change its
-origin - within the site - later on. Measurements indicate that [enabling
+not by origin, because a page *might* use `document.domain` to get cross-origin
+access - within the site - later on. Measurements indicate that [enabling
 cross-origin access by setting `document.domain` happens on around 0.5% of page views](https://chromestatus.com/metrics/feature/timeline/popularity/2544)  So 99% of pages do not even use this feature. But because they *might* want
 to set `document.domain` later on, browsers have to allocate processes by site.
 
@@ -77,7 +77,8 @@ The [`Òrigin-Agent-Cluster` http header](https://web.dev/origin-agent-cluster/)
 ([spec](https://html.spec.whatwg.org/multipage/origin.html#origin-keyed-agent-clusters))
 allows a page to request being isolated by origin (instead of site). If set
 `true` (`Origin-Agent-Cluster: ?1`), the browser is asked to isolate pages by
-origin. (Agent Cluster is spec speak for isolation groups. Since the low-level
+origin. If `false`, by site.
+(Agent Cluster is spec speak for isolation groups. Since the low-level
 isolation is not visible at the API layer, specifications only cursorily
 touches the subject.) As a side effect, writing to the  document.domain`
 accessor is ignored.
