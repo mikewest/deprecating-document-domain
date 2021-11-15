@@ -87,9 +87,8 @@ In detail:
 
 * The `Origin-Agent-Cluster:` header will, when present, continue to work as
   it currently does. What will change is the default when the header is absent.
-* We'll Implement a console warning when a page would be affected by this
-  change: If the page assigns to `document.domain` but does not have
-  any `Origin-Agent-Cluster:` header set a warning is issues.
+* We'll implement a console warning when a page assigns to `document.domain`
+  but does not set an `Origin-Agent-Cluster: ?0` header.
 * We'll have a developer-enable-able feature flag that treats absence of
   `Agent-Origin-Cluster:` header as having value true (`?1`)
 * Then we wait.
