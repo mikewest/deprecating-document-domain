@@ -73,7 +73,7 @@ security - that they don't make any use of.
 
 ## A Proposal
 
-The [`Òrigin-Agent-Cluster` http header](https://web.dev/origin-agent-cluster/)
+The [`Origin-Agent-Cluster` http header](https://web.dev/origin-agent-cluster/)
 ([spec](https://html.spec.whatwg.org/multipage/origin.html#origin-keyed-agent-clusters))
 allows a page to request being isolated by origin (instead of site). If set
 `true` (`Origin-Agent-Cluster: ?1`), the browser is asked to isolate pages by
