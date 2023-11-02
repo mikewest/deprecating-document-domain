@@ -21,7 +21,7 @@ complexity revolves around the
 [Spectre](https://en.wikipedia.org/wiki/Spectre_%28security_vulnerability%29)
 family of attacks and the `document.domain` accessor:
 
-Modern browsers [isolate different sites from each other](https://www.chromium.org/Home/chromium-security/site-isolation), by seperating execution into
+Modern browsers [isolate different sites from each other](https://www.chromium.org/Home/chromium-security/site-isolation), by separating execution into
 different operating system processes. Pages that need to cooperate need to
 be assigned to the same process. Pages that do not cooperate can be assigned
 to different processes.
@@ -115,7 +115,7 @@ Any page that wishes to set `document.domain` will need to opt-into the ability 
 
 `window.postMessage()` provides an explicit communication channel for cross-origin collaboration.
 
-This isn't a perfect match for some use cases which require user activation to flow from one frame to another (consider a [video player in a cross-origin `<iframe>`](https://twitter.com/JibberJim/status/1318134009252237312)), but is the right general purpose mechainsm to point developers towards. Delegation of capability that user activation enables might be possible in the future via a mechanism like the one described in [mustaqahmed/capability-delegation](https://github.com/mustaqahmed/capability-delegation).
+This isn't a perfect match for some use cases which require user activation to flow from one frame to another (consider a [video player in a cross-origin `<iframe>`](https://twitter.com/JibberJim/status/1318134009252237312)), but is the right general purpose mechanism to point developers towards. Delegation of capability that user activation enables might be possible in the future via a mechanism like the one described in [mustaqahmed/capability-delegation](https://github.com/mustaqahmed/capability-delegation).
 
 ### Do we know anything useful about the ~0.4% usage noted above?
 
