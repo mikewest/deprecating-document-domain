@@ -60,7 +60,7 @@ these can give each other access and e.g. the page can directly control the
 player. To accomodate this usage, browsers will allocate those two pages
 to the same process.
 
-[Setting document.domain has been deprecated](https://html.spec.whatwg.org/multipage/origin.html#relaxing-the-same-origin-restriction)
+[Setting `document.domain` has been deprecated](https://html.spec.whatwg.org/multipage/origin.html#relaxing-the-same-origin-restriction)
 for a long time, but continues to be supported by browsers.
 This forces process allocation to be by site,
 not by origin, because a page *might* use `document.domain` to get cross-origin
@@ -80,7 +80,7 @@ allows a page to request being isolated by origin (instead of site). If set
 origin. If `false`, by site.
 (Agent Cluster is spec speak for isolation groups. Since the low-level
 isolation is not visible at the API layer, specifications only cursorily
-touches the subject.) As a side effect, writing to the  document.domain`
+touches the subject.) As a side effect, writing to the  `document.domain`
 accessor is ignored.
 
 Currently, absence of the `Origin-Agent-Cluster` header defaults to `false`,
