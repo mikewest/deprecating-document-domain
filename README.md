@@ -21,7 +21,7 @@ complexity revolves around the
 [Spectre](https://en.wikipedia.org/wiki/Spectre_%28security_vulnerability%29)
 family of attacks and the `document.domain` accessor:
 
-Modern browsers [isolate different sites from each other](https://www.chromium.org/Home/chromium-security/site-isolation), by seperating execution into
+Modern browsers [isolate different sites from each other](https://www.chromium.org/Home/chromium-security/site-isolation), by separating execution into
 different operating system processes. Pages that need to cooperate need to
 be assigned to the same process. Pages that do not cooperate can be assigned
 to different processes.
@@ -60,7 +60,7 @@ these can give each other access and e.g. the page can directly control the
 player. To accomodate this usage, browsers will allocate those two pages
 to the same process.
 
-[Setting document.domain has been deprecated]((https://html.spec.whatwg.org/multipage/origin.html#relaxing-the-same-origin-restriction)
+[Setting `document.domain` has been deprecated](https://html.spec.whatwg.org/multipage/origin.html#relaxing-the-same-origin-restriction)
 for a long time, but continues to be supported by browsers.
 This forces process allocation to be by site,
 not by origin, because a page *might* use `document.domain` to get cross-origin
@@ -80,7 +80,7 @@ allows a page to request being isolated by origin (instead of site). If set
 origin. If `false`, by site.
 (Agent Cluster is spec speak for isolation groups. Since the low-level
 isolation is not visible at the API layer, specifications only cursorily
-touches the subject.) As a side effect, writing to the  document.domain`
+touches the subject.) As a side effect, writing to the  `document.domain`
 accessor is ignored.
 
 Currently, absence of the `Origin-Agent-Cluster` header defaults to `false`,
@@ -115,7 +115,7 @@ Any page that wishes to set `document.domain` will need to opt-into the ability 
 
 `window.postMessage()` provides an explicit communication channel for cross-origin collaboration.
 
-This isn't a perfect match for some use cases which require user activation to flow from one frame to another (consider a [video player in a cross-origin `<iframe>`](https://twitter.com/JibberJim/status/1318134009252237312)), but is the right general purpose mechainsm to point developers towards. Delegation of capability that user activation enables might be possible in the future via a mechanism like the one described in [mustaqahmed/capability-delegation](https://github.com/mustaqahmed/capability-delegation).
+This isn't a perfect match for some use cases which require user activation to flow from one frame to another (consider a [video player in a cross-origin `<iframe>`](https://twitter.com/JibberJim/status/1318134009252237312)), but is the right general purpose mechanism to point developers towards. Delegation of capability that user activation enables might be possible in the future via a mechanism like the one described in [mustaqahmed/capability-delegation](https://github.com/mustaqahmed/capability-delegation).
 
 ### Do we know anything useful about the ~0.4% usage noted above?
 
